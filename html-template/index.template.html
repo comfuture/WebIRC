@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<!-- saved from url=(0014)about:internet -->
+<html>
+    <head>
+        <title>${title}</title>         
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style type="text/css" media="screen"> 
+			html, body	{ height:100%; }
+			body { margin:0; padding:0; overflow:auto; text-align:center; 
+			       background-color: ${bgcolor}; }
+			#inputPanel {
+				position: absolute;
+			}
+        </style>
+
+        <!-- BEGIN Browser History required section ${useBrowserHistory}>
+        <link rel="stylesheet" type="text/css" href="history/history.css" />
+        <script type="text/javascript" src="history/history.js"></script>
+        <!${useBrowserHistory} END Browser History required section -->  
+
+		<script type="text/javascript" src="http://code.jquery.com/jquery.min.js"></script>
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.5/jquery-ui.min.js"></script>
+		<script type="text/javascript" src="juice.lite.js"></script>
+        <script type="text/javascript" src="swfobject.js"></script>
+		<script type="text/javascript">
+		
+		var WebIRC = Class({
+			movie: "${swf}.swf",
+			__init__: function() {
+				var url = new URL();
+				
+				var randomNick = 'webirc' + Math.ceil(Math.random() * 100000);
+				var chanNick = (url.fragment || '#maroo|' + randomNick).split('|');
+				this.flashvars = {
+					server: url.query.server || 'webirc.ozinger.org',
+					port: parseInt(url.query.port || '6667', 10),
+					channels: chanNick[0] || '#maroo'
+				};
+				if (chanNick.length > 1)
+					this.flashvars.nick = chanNick[1];
+			},
+			
+			appendTo: function(elementID) {
+	            var swfVersionStr = "${version_major}.${version_minor}.${version_revision}";
+	            var xiSwfUrlStr = "${expressInstallSwf}";
+	            var flashvars = this.flashvars;
+	            var params = {};
+	            params.quality = "high";
+	            params.bgcolor = "${bgcolor}";
+	            params.allowscriptaccess = "always";
+	            params.wmode = 'opaque';
+	            var attributes = {};
+	            attributes.id = "${application}";
+	            attributes.name = "${application}";
+	            attributes.align = "middle";
+	            swfobject.embedSWF(
+	                this.movie, elementID, 
+	                "${width}", "${height}", 
+	                swfVersionStr, xiSwfUrlStr, 
+	                flashvars, params, attributes);
+				swfobject.createCSS("#" + elementID, "display:block;text-align:left;");
+			}
+		});
+		
+		function placeInput() {			
+			$('#txtInput').css({
+				'width': $(window).width() - $('#btnNick').width() - 50
+			});
+			
+			$('#inputPanel').position({
+				'of': $(window),
+				'my': 'right bottom',
+				'at': 'right bottom'
+			});
+		}
+		
+		$(function() {
+			var webIRC = new WebIRC();
+			webIRC.appendTo('flashContent');
+			placeInput();
+			$(window).resize(placeInput);
+			
+			$('#txtInput').keyup(function(event) {
+				if (event.keyCode == 13) {
+					var input = $(this);
+					try {
+						$("#${application}").get(0).processInput(input.val());
+					} catch (e) {}
+					input.val('');
+				}
+			});
+		});
+		</script>
+    </head>
+    <body>
+        <div id="flashContent">
+        	<p>
+	        	To view this page ensure that Adobe Flash Player version 
+				${version_major}.${version_minor}.${version_revision} or greater is installed. 
+			</p>
+			<script type="text/javascript"> 
+				var pageHost = ((document.location.protocol == "https:") ? "https://" :	"http://"); 
+				document.write("<a href='http://www.adobe.com/go/getflashplayer'><img src='" 
+								+ pageHost + "www.adobe.com/images/shared/download_buttons/get_flash_player.gif' alt='Get Adobe Flash player' /></a>" ); 
+			</script> 
+        </div>
+	   	
+       	<noscript>
+            <object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" width="${width}" height="${height}" id="${application}">
+                <param name="movie" value="${swf}.swf" />
+                <param name="quality" value="high" />
+                <param name="bgcolor" value="${bgcolor}" />
+                <param name="allowScriptAccess" value="sameDomain" />
+                <param name="allowFullScreen" value="true" />
+                <!--[if !IE]>-->
+                <object type="application/x-shockwave-flash" data="${swf}.swf" width="${width}" height="${height}">
+                    <param name="quality" value="high" />
+                    <param name="bgcolor" value="${bgcolor}" />
+                    <param name="allowScriptAccess" value="sameDomain" />
+                    <param name="allowFullScreen" value="true" />
+                <!--<![endif]-->
+                <!--[if gte IE 6]>-->
+                	<p> 
+                		Either scripts and active content are not permitted to run or Adobe Flash Player version
+                		${version_major}.${version_minor}.${version_revision} or greater is not installed.
+                	</p>
+                <!--<![endif]-->
+                    <a href="http://www.adobe.com/go/getflashplayer">
+                        <img src="http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif" alt="Get Adobe Flash Player" />
+                    </a>
+                <!--[if !IE]>-->
+                </object>
+                <!--<![endif]-->
+            </object>
+	    </noscript>
+	    <div id="inputPanel">
+			<button id="btnNick">nickname</button>
+			<input type="text" class="chat-input" id="txtInput" />
+		</div>
+   </body>
+</html>

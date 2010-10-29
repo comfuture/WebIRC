@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%">
+	<s:layout>
+		<s:HorizontalLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import flash.text.engine.TextElement;
+			import flash.text.engine.TextLine;
+			
+			import flashx.textLayout.edit.EditManager;
+			import flashx.textLayout.edit.SelectionManager;
+			import flashx.textLayout.elements.DivElement;
+			import flashx.textLayout.elements.ParagraphElement;
+			import flashx.textLayout.elements.SpanElement;
+			
+			import maroo.net.irc.IRCUser;
+			
+			import mx.collections.ArrayList;
+			import mx.events.ResizeEvent;
+			
+			import spark.components.Button;
+			
+			import ui.renderer.UserRenderer;
+			import ui.widget.UserWidget;
+			
+			import vo.irc.Channel;
+			public var data:Channel;
+			
+			[Bindable]
+			private var users:ArrayList = new ArrayList([
+				new IRCUser('aaa'),new IRCUser('bbb'),new IRCUser('ccc'),
+				new IRCUser('aaa'),new IRCUser('bbb'),new IRCUser('ccc'),
+				new IRCUser('aaa'),new IRCUser('bbb'),new IRCUser('ccc'),
+				new IRCUser('aaa'),new IRCUser('bbb'),new IRCUser('ccc'),
+				new IRCUser('aaa'),new IRCUser('bbb'),new IRCUser('ccc')
+			]);
+
+			override public function get label():String
+			{
+				return data.name;
+			}
+			
+			public function writeLine(line:*):void
+			{
+				chat2.text += '\n' + line.toString();
+				chatView.verticalScrollPosition += 999999;
+				var u:UserWidget = new UserWidget();
+				var user:IRCUser = new IRCUser('maroo');
+				u.data = user;
+				u.y += 20;
+				u.x += 10;
+				chat2.addChild(u);
+			}
+		]]>
+	</fx:Script>
+	<s:Group width="100%" height="100%">
+		<s:layout>
+			<s:VerticalLayout/>
+		</s:layout>
+		<s:Label text="Topic" width="100%" height="20" verticalAlign="middle" paddingLeft="10"
+				 backgroundColor="0xEEEEEE"/>
+		<s:Group width="100%" height="100%">
+			<s:layout>
+				<s:HorizontalLayout/>
+			</s:layout>
+			<!--
+			<s:TextArea id="chat" width="100%" height="100%" paddingLeft="10" paddingTop="5" editable="false">
+				
+				
+			</s:TextArea>
+			-->
+			<s:Scroller width="100%" height="100%" id="scroller" minViewportInset="1" focusEnabled="false">
+				<s:Group width="100%" height="100%" clipAndEnableScrolling="true" id="chatView">
+					<s:RichText id="chat2" text="Chat" width="100%" paddingLeft="10" paddingTop="5">
+						<s:TextFlow id="chat" interactionManager="{new EditManager()}">
+							<s:p>
+								asdfasdf
+							</s:p>
+							<s:a href="http://foo.com">
+								foo
+							</s:a>
+							<s:img source="http://github.com/images/modules/header/logov3-hover.png" />
+						</s:TextFlow>
+					</s:RichText>
+				</s:Group>
+			</s:Scroller>
+		</s:Group>
+	</s:Group>
+	<s:List width="200" height="100%" itemRenderer="ui.renderer.UserRenderer" dataProvider="{users}"></s:List>
+</s:NavigatorContent>

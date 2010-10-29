@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx">
+	<s:layout>
+		<s:HorizontalLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import maroo.net.irc.IRCUser;
+
+			public static const COLOR_OPER:uint = 0xFFFF00;
+			public static const COLOR_VOICE:uint = 0x00FF00;
+			public static const COLOR_NORMAL:uint = 0xAAAAAA;
+			
+			private var _data:IRCUser;
+			
+			[Bindable]
+			public function get data():IRCUser { return _data; }
+			public function set data(value:IRCUser):void
+			{
+				_data = value;
+				label.text = value.nick;
+				if (value.isOper)
+					iconColor.color = COLOR_OPER;
+				else if (value.isVoice)
+					iconColor.color = COLOR_VOICE;
+				else
+					iconColor.color = COLOR_NORMAL;
+			}
+		]]>
+	</fx:Script>
+	<s:Graphic width="10" height="10">
+		<s:Ellipse width="10" height="10" horizontalCenter="0" verticalCenter="0">
+			<s:fill>
+				<s:SolidColor id="iconColor" color="{COLOR_NORMAL}"/>
+			</s:fill>
+		</s:Ellipse>
+	</s:Graphic>
+	<s:Label height="100%" minHeight="10" minWidth="50" id="label" text="IRCUser" verticalAlign="middle"/>
+</s:Group>
