@@ -21,7 +21,7 @@ package maroo.net.irc
 			this.params = params || [];
 		}
 		
-		public static function fromString(str:String):IRCMessage
+		public static function fromString(str:String, conn:IRCConnection=null):IRCMessage
 		{
 			var re:RegExp = new RegExp("^(?:[:@](?P<prefix>[^\\s]+) )?" +
 				"(?P<command>[^\\s]+)" +
@@ -30,7 +30,7 @@ package maroo.net.irc
 			var match:Array = str.match(re);
 			if (!match)
 				throw new Error('Invalid Message format');
-			var prefix:IRCPrefix = IRCPrefix.fromString(match['prefix']);
+			var prefix:IRCPrefix = IRCPrefix.fromString(match['prefix'], conn);
 			var cmd:String = StringUtil.trim(match['command']);
 			var params:Array = StringUtil.trim(match['params']).split(/\s+/);
 			if (match['text'])

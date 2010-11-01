@@ -6,6 +6,7 @@ package maroo.net.irc
 		public static const CHANNEL:String = 'channel';
 		public static const USER:String = 'user';
 
+		public var server:IRCServer;
 		public var type:String;
 		public var name:String;
 		
@@ -15,13 +16,19 @@ package maroo.net.irc
 			this.type = type;
 		}
 		
-		public static function fromString(str:String):IRCPrefix
+		public static function fromString(str:String, conn:IRCConnection=null):IRCPrefix
 		{
-			if (str.match(/^[&#+!][^\s\,]+&/))
-				return IRCChannel(str);
+			if (str.match(/^[&#+!][^\s\,]+&/)) {
+				if (conn)
+					return conn.findChannel(str);
+				return new IRCChannel(str);
+			}
 			var match:Array = str.match(/^([^!@]+)(?:(?:\!([^@]+))?(?:\@(\S+)))?$/);
-			if (match)
+			if (match) {
+				if (conn)
+					return conn.findUser(str);
 				return new IRCUser(match[1], match[2], match[3]);
+			}
 			return IRCServer(str);
 		}
 		

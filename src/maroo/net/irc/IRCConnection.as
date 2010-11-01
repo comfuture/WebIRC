@@ -72,6 +72,12 @@ package maroo.net.irc
 			_user = new IRCUser(nick, user, host);
 			return _user;
 		}
+		
+		public function findUsers(mask:String):Vector.<IRCUser>
+		{
+			// TODO: implement this
+			return new Vector.<IRCUser>();
+		}
 
 		private function addUser(user:IRCUser):void
 		{
@@ -81,6 +87,9 @@ package maroo.net.irc
 		
 		private function removeUser(user:IRCUser):void
 		{
+			for each (var chan:IRCChannel in user.channels) {
+				chan.removeUser(user);
+			}
 			var pos:int = users.indexOf(user);
 			if (pos > -1)
 				users.splice(pos, 1);
@@ -112,7 +121,7 @@ package maroo.net.irc
 						send('PONG' + line.substr(4));
 						return;
 					}
-					var message:IRCMessage = IRCMessage.fromString(line);
+					var message:IRCMessage = IRCMessage.fromString(line, this);
 					var e:IRCEvent = new IRCEvent(IRCEvent.MESSAGE, message);
 					dispatchEvent(e);
 				}
@@ -126,8 +135,9 @@ package maroo.net.irc
 			var user:IRCUser;
 			switch (message.command) {
 				case 'JOIN':	// join
+					chan = findChannel(message.params[1]);
 					if (channels.indexOf(chan) < 0)
-						channels.push(new IRCChannel(message.params[1]));
+						channels.push(chan);
 					//MonsterDebugger.trace(this, message);
 					break;
 				case '353':	// users
@@ -140,6 +150,10 @@ package maroo.net.irc
 						
 						var nicks:Array = message.text.split(/\s+/);
 						for each (var nick:String in nicks) {
+							if (nick.match(/^[@\+]/)) {
+								nick = nick.substr(1);
+								chan.setMode('+o ' + nick);
+							}
 							user = findUser(nick);
 							if (user.channels.indexOf(chan) < 0)
 								user.channels.push(chan);
@@ -151,6 +165,19 @@ package maroo.net.irc
 					}
 					break;
 				case '366':	// end of channel info
+					break;
+				case 'MODE':
+					if (/^[&#+!][^\s\,]+&/.test(message.params[0])) { // channel modes
+						chan = findChannel(message.params.pop());
+						chan.setMode(message.params.join(' '));
+					} else {	// user mode
+						user = findUser(message.params.pop());
+						user.setMode(message.params.join(' '));
+					}
+					break;
+				case 'QUIT':
+					user = message.prefix as IRCUser;
+					removeUser(user);
 					break;
 			}
 		}

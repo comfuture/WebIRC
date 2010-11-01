@@ -7,6 +7,8 @@ package ui.util
 	import flashx.textLayout.operations.FlowElementOperation;
 	
 	import maroo.net.irc.IRCMessage;
+	
+	import spark.utils.TextFlowUtil;
 
 	public class MessageFormatter
 	{
@@ -16,6 +18,14 @@ package ui.util
 			switch (message.command) {
 				case 'PRIVMSG':
 					p = new ParagraphElement();
+					/*
+					var tpl:XML = <TextFlow xmlns="http://ns.adobe.com/textlayout/2008">
+						<p><span>&lt;{message.prefix.name}&gt;</span>
+						<span>{message.text}</span></p>
+					</TextFlow>;
+					var tf:TextFlow = TextFlowUtil.importFromXML(tpl);
+					return tf.getChildAt(0);
+					*/
 					var nick:SpanElement = new SpanElement();
 					nick.text = '<' + message.prefix.name + '> ';
 					var msg:SpanElement = new SpanElement();

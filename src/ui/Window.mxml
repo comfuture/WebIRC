@@ -11,6 +11,7 @@
 			import maroo.net.irc.IRCChannel;
 			import maroo.net.irc.IRCMessage;
 			import maroo.net.irc.IRCPrefix;
+			import maroo.net.irc.IRCUser;
 			
 			import mx.collections.ArrayCollection;
 			import mx.utils.ArrayUtil;
@@ -58,6 +59,18 @@
 			{
 				var el:FlowElement = MessageFormatter.formatString(text);
 				history.textFlow.addChild(el);
+			}
+			
+			public function addUser(user:IRCUser):void
+			{
+				if (!users.contains(user))
+					users.addItem(user);
+			}
+			
+			public function removeUser(user:IRCUser):void
+			{
+				if (users.contains(user))
+					users.removeItemAt(users.getItemIndex(user));
 			}
 			
 			public function get topic():String
