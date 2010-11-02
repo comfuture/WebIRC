@@ -76,6 +76,8 @@ package maroo.net.irc
 
 		public function findUser(mask:String):IRCUser
 		{
+			if (server && server.connection && server.connection.connected)
+				return server.connection.findUser(mask);
 			var match:Array = mask.match(/^([^!@]+)(?:(?:\!([^@]+))?(?:\@(\S+)))?$/);
 			var nick:String = match[1];
 			for each (var user:IRCUser in users) {

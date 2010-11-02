@@ -2,7 +2,7 @@
 <s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
 		 xmlns:s="library://ns.adobe.com/flex/spark" 
 		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" currentState="server"
-		 initialize="init()">
+		 creationComplete="init()">
 	<fx:Script>
 		<![CDATA[
 			import flashx.textLayout.elements.FlowElement;
@@ -20,7 +20,8 @@
 			import ui.util.MessageFormatter;
 			
 			private var _prefix:IRCPrefix;
-			
+			private var queue:Vector.<IRCMessage> = new Vector.<IRCMessage>();
+
 			[Bindable]
 			public var users:ArrayCollection = new ArrayCollection();
 
@@ -46,19 +47,31 @@
 			
 			public function init():void
 			{
-				
+				if (queue.length > 0) {
+					for (var i:int = queue.length - 1; i >= 0; i--) {
+						appendMessage(queue.shift() as IRCMessage);
+					}
+				}
 			}
 			
 			public function appendMessage(message:IRCMessage):void
 			{
 				var el:FlowElement = MessageFormatter.formatMessage(message);
-				history.textFlow.addChild(el);
+				try {
+					history.textFlow.addChild(el);
+				} catch (e:Error) {
+					queue.push(message);
+				}
 			}
 			
 			public function appendText(text:String):void
 			{
 				var el:FlowElement = MessageFormatter.formatString(text);
-				history.textFlow.addChild(el);
+				try {
+					history.textFlow.addChild(el);
+				} catch (e:Error) {
+					//
+				}
 			}
 			
 			public function addUser(user:IRCUser):void
