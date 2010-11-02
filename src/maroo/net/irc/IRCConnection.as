@@ -5,6 +5,7 @@ package maroo.net.irc
 	import flash.events.SecurityErrorEvent;
 	import flash.net.Socket;
 	import flash.utils.ByteArray;
+	import flash.utils.Dictionary;
 	
 	import mx.controls.Alert;
 	
@@ -13,6 +14,7 @@ package maroo.net.irc
 	public class IRCConnection extends Socket
 	{
 		public var server:IRCServer;
+		public var options:Dictionary;
 		public var channels:Vector.<IRCChannel>;
 		public var users:Vector.<IRCUser>;
 		private var buffer:String;
@@ -20,6 +22,7 @@ package maroo.net.irc
 		public function IRCConnection(host:String=null, port:int=6667)
 		{
 			super(host, port);
+			options = new Dictionary();
 			buffer = '';
 			server = new IRCServer(host);
 			server.connection = this;
@@ -34,6 +37,7 @@ package maroo.net.irc
 		public function send(str:String):void
 		{
 			writeUTFBytes(str + '\r\n');
+			flush();
 		}
 		
 		public function sendMessage(message:IRCMessage):void
@@ -50,6 +54,13 @@ package maroo.net.irc
 			return new IRCChannel(name);
 		}
 		
+		/**
+		 * Returns first mask-matched user in current connection
+		 * or make one
+		 * 
+		 * @param mask: irc prefix mask pattern or just nickname (can include wildcard chars)
+		 * @return new or exist IRCUser
+		 */
 		public function findUser(mask:String):IRCUser
 		{
 			// nick
@@ -58,18 +69,21 @@ package maroo.net.irc
 			// nick!user
 			// nick!user@host
 			// nick@host
-			var match:Array = mask.match(/^(?P<nick>[@\+]?[^!@]+)(?:(?:\!(?P<user>[^@]+))?(?:\@(?P<host>\S+)))?$/);
+			var match:Array = mask.match(/^(?P<nick>[@\+]*[^!@]+)(?:(?:\!(?P<user>[^@]+))?(?:\@(?P<host>\S+)))?$/);
 			var nick:String = match['nick'];
-			if (nick.match(/^@\+/)) {
+			var user:String = match['user'] || '*';
+			var host:String = match['host'] || '*';
+			if (mask.match(/^[@\+]+[^!@]+$/)) {
 				nick = nick.substr(1);
 			}
-			var user:String = match['user'];
-			var host:String = match['host'];
+			mask = nick + '!' + user + '@' + host; 
 			for each (var _user:IRCUser in users) {
-				if (_user.nick == nick)
+				Alert.show('findUser: ' + mask + ', ' + (IRCUtil.matchMask(_user.mask, mask) ? '1' : '0'));
+				if (IRCUtil.matchMask(_user.mask, mask))
 					return _user;
 			}
-			_user = new IRCUser(nick, user, host);
+			//return new IRCUser('not found');
+			_user = new IRCUser(nick, user, host, server);
 			return _user;
 		}
 		
@@ -133,20 +147,37 @@ package maroo.net.irc
 			var message:IRCMessage = event.message;
 			var chan:IRCChannel;
 			var user:IRCUser;
+			var chanEvent:IRCChannelEvent;
 			switch (message.command) {
+				case '005':	// RPL_BOUNCE
+					message.params.pop();	// :are supported by this server
+					message.params.shift();	// target nick
+					for each (var opt:String in message.params) {
+						var posEqual:int = opt.indexOf('=');
+						if (posEqual > -1) {
+							options[opt.substr(0, posEqual)] = opt.substr(posEqual + 1);
+						} else {
+							options[opt] = true;
+						}
+					}
+					break;
 				case 'JOIN':	// join
 					chan = findChannel(message.params[1]);
 					if (channels.indexOf(chan) < 0)
 						channels.push(chan);
 					//MonsterDebugger.trace(this, message);
+					chanEvent = new IRCChannelEvent(IRCChannelEvent.JOIN, chan, message);
+					dispatchEvent(chanEvent);
 					break;
 				case '353':	// users
 					chan = findChannel(message.params[2]);
 					if (chan) {
+						/*
 						if (message.params[1] == '@')
-							chan.isSecret = true;
+							chan.setMode('+s');
 						if (message.params[1] == '*')
-							chan.isPrivate = true;
+							chan.setMode('+p');
+						*/
 						
 						var nicks:Array = message.text.split(/\s+/);
 						for each (var nick:String in nicks) {
@@ -170,6 +201,9 @@ package maroo.net.irc
 					if (/^[&#+!][^\s\,]+&/.test(message.params[0])) { // channel modes
 						chan = findChannel(message.params.pop());
 						chan.setMode(message.params.join(' '));
+						chanEvent = new IRCChannelEvent(IRCChannelEvent.MODE,
+							chan, message);
+						dispatchEvent(chanEvent);
 					} else {	// user mode
 						user = findUser(message.params.pop());
 						user.setMode(message.params.join(' '));

@@ -4,8 +4,6 @@ package maroo.net.irc
 
 	public class IRCChannel extends IRCPrefix
 	{
-		public var isSecret:Boolean;
-		public var isPrivate:Boolean;
 		public var modes:Array;
 		public var key:String;
 		public var limit:int = -1;
@@ -14,14 +12,17 @@ package maroo.net.irc
 		public var voices:Vector.<IRCUser>;
 		public var bans:Vector.<IRCUser>;
 
-		public function IRCChannel(name:String, isSecret:Boolean=false, isPrivate:Boolean=false)
+		public function IRCChannel(name:String, mode:String=null)
 		{
 			super(CHANNEL);
 			this.name = name;
-			this.isSecret = isSecret;
-			this.isPrivate = isPrivate;
 			modes = [];
 			users = new Vector.<IRCUser>();
+			opers = new Vector.<IRCUser>();
+			voices = new Vector.<IRCUser>();
+			bans = new Vector.<IRCUser>();
+			if (mode)
+				setMode(mode);
 		}
 		
 		public function addUser(user:IRCUser):void
@@ -94,20 +95,21 @@ package maroo.net.irc
 		public function setMode(mode:String):void
 		{
 			var targets:Array = mode.split(/\s+/);
-			mode = targets.shift();
-			var _modes:Array = mode.split(/(.)/);
+			var options:String = targets.shift();
+			var opt:Array = options.split('');
 			var effect:String = '+';
 			
 			var methodMap:Object = {
 				'o': op, 'v': voice, 'b': ban, 'k': setKey
 			};
 
-			for each (var char:String in _modes) {
+			for each (var char:String in opt) {
 				if (char == '+' || char == '-') {
 					effect = char;
 					continue;
 				}
 				if (['o','v','b','k'].indexOf(char)) { // op voice ban key
+					targets.shift()
 					methodMap[char](targets.shift(), effect);
 				} else if (char == 'l') {	// limit
 					if (effect == '+')
@@ -124,6 +126,8 @@ package maroo.net.irc
 					} 
 				}
 			}
+			if (targets.length > 0)
+				setMode(targets.join(' '));
 		}
 	}
 }

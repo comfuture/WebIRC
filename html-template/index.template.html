@@ -40,6 +40,19 @@
 					this.flashvars.nick = chanNick[1];
 			},
 			
+			getFlash: function() {
+				return $('#${application}').get(0);
+			},
+			
+			onNick: function(newNick) {
+				$('#btnNick').html(newNick);
+				placeInput();
+			},
+			
+			changeNick: function() {
+				this.getFlash().showNicknameDialog();
+			},
+			
 			appendTo: function(elementID) {
 	            var swfVersionStr = "${version_major}.${version_minor}.${version_revision}";
 	            var xiSwfUrlStr = "${expressInstallSwf}";
@@ -58,6 +71,7 @@
 	                "${width}", "${height}", 
 	                swfVersionStr, xiSwfUrlStr, 
 	                flashvars, params, attributes);
+	            this.flashID = elementID;
 				swfobject.createCSS("#" + elementID, "display:block;text-align:left;");
 			}
 		});
@@ -75,7 +89,7 @@
 		}
 		
 		$(function() {
-			var webIRC = new WebIRC();
+			window.webIRC = new WebIRC();
 			webIRC.appendTo('flashContent');
 			placeInput();
 			$(window).resize(placeInput);
@@ -88,6 +102,10 @@
 					} catch (e) {}
 					input.val('');
 				}
+			});
+			
+			$('#btnNick').click(function(e) {
+				webIRC.changeNick();
 			});
 		});
 		</script>

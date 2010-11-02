@@ -23,13 +23,13 @@ package maroo.net.irc
 					return conn.findChannel(str);
 				return new IRCChannel(str);
 			}
-			var match:Array = str.match(/^([^!@]+)(?:(?:\!([^@]+))?(?:\@(\S+)))?$/);
+			var match:Array = str.match(/^([^!@]+)(?:(?:\!([^@]+))(?:\@(\S+)))$/);
 			if (match) {
 				if (conn)
 					return conn.findUser(str);
 				return new IRCUser(match[1], match[2], match[3]);
 			}
-			return IRCServer(str);
+			return new IRCServer(str); // XXX
 		}
 		
 		public function toString():String

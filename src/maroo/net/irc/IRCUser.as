@@ -21,7 +21,7 @@ package maroo.net.irc
 		
 		public function get mask():String { return toString(); }
 
-		public function IRCUser(nick:String, user:String=null, host:String=null)
+		public function IRCUser(nick:String, user:String=null, host:String=null, server:IRCServer=null)
 		{
 			super(USER);
 			channels = new Vector.<IRCChannel>();
@@ -41,6 +41,13 @@ package maroo.net.irc
 			this.user = user;
 			this.host = host;
 		}
+		
+		/*
+		public static function fromMask(mask:String):IRCUser
+		{
+			return new IRCUser(mask);
+		}
+		*/
 		
 		public function setMode(mode:String):void
 		{
@@ -69,18 +76,18 @@ package maroo.net.irc
 		public function isOper(chan:IRCChannel):Boolean
 		{
 			// TODO: implement this
-			return false;
+			return chan.opers.indexOf(this) > -1;
 		}
 
 		public function isVoice(chan:IRCChannel):Boolean
 		{
 			// TODO: implement this
-			return false;
+			return chan.voices.indexOf(this) > -1;
 		}
 
 		override public function toString():String
 		{
-			return nick + (user ? '!' + user : '') + (host ? '@' + host : '');
+			return nick + (user ? '!' + user : '!*') + (host ? '@' + host : '@*');
 		}
 	}
 }

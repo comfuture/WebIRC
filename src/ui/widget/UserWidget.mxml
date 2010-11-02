@@ -10,7 +10,12 @@
 	</fx:Declarations>
 	<fx:Script>
 		<![CDATA[
+			import maroo.net.irc.IRCChannel;
 			import maroo.net.irc.IRCUser;
+			
+			import mx.core.UIComponent;
+			
+			import ui.Window;
 
 			public static const COLOR_OPER:uint = 0xFFFF00;
 			public static const COLOR_VOICE:uint = 0x00FF00;
@@ -22,11 +27,13 @@
 			public function get data():IRCUser { return _data; }
 			public function set data(value:IRCUser):void
 			{
+				var win:Window = 
+					UIComponent(UIComponent(this.parentDocument).parentDocument).parentDocument as Window;
 				_data = value;
 				label.text = value.nick;
-				if (value.isOper)
+				if (value.isOper(win.prefix as IRCChannel))
 					iconColor.color = COLOR_OPER;
-				else if (value.isVoice)
+				else if (value.isVoice(win.prefix as IRCChannel))
 					iconColor.color = COLOR_VOICE;
 				else
 					iconColor.color = COLOR_NORMAL;
