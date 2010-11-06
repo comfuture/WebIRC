@@ -11,32 +11,23 @@ package maroo.net.irc
 		public var nick:String;
 		public var user:String;
 		public var host:String;
-		public var channels:Vector.<IRCChannel>;
+		public var isOper:Boolean;
+		public var isVoice:Boolean;
+		public var isMe:Boolean;
 		public var modes:Array;
-
-		public function get isMe():Boolean
-		{
-			return false;
-		}
 		
 		public function get mask():String { return toString(); }
 
 		public function IRCUser(nick:String, user:String=null, host:String=null, server:IRCServer=null)
 		{
 			super(USER);
-			channels = new Vector.<IRCChannel>();
 			modes = [];
-			/*
-			var match:Array = nick.match(/^([@\+])/);
-			if (match) {
-				this.nick = nick.substr(1);
-				isOper = match[1] == '@';
-				isVoice = match[1] == '+';
-			} else {
-				this.nick = nick;
+			var match:Array = nick.match(/^(?P<mode>[@\+]*)(?P<rawnick>\S+)/);
+			if (match['mode']) {
+				isOper = match['mode'].indexOf('@') > -1;
+				isVoice = match['mode'].indexOf('+') > -1;
 			}
-			*/
-			this.nick = nick;
+			this.nick = match['rawnick'];
 			this.name = nick;
 			this.user = user;
 			this.host = host;
@@ -71,18 +62,6 @@ package maroo.net.irc
 		public function getMode(chan:IRCChannel):String
 		{
 			return '+' + modes.join('');
-		}
-		
-		public function isOper(chan:IRCChannel):Boolean
-		{
-			// TODO: implement this
-			return chan.opers.indexOf(this) > -1;
-		}
-
-		public function isVoice(chan:IRCChannel):Boolean
-		{
-			// TODO: implement this
-			return chan.voices.indexOf(this) > -1;
 		}
 
 		override public function toString():String

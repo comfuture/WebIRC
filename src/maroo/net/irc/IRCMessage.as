@@ -4,6 +4,7 @@ package maroo.net.irc
 
 	public class IRCMessage
 	{
+		public var connection:IRCConnection;
 		public var command:String;
 		public var prefix:IRCPrefix;
 		public var params:Array;
@@ -36,6 +37,7 @@ package maroo.net.irc
 			if (match['text'])
 				params.push(StringUtil.trim(match['text']));
 			var message:IRCMessage = new IRCMessage(cmd, prefix, params);
+			message.connection = conn;
 			message.raw = str;
 			return message;
 		}

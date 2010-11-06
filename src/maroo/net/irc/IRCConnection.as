@@ -17,6 +17,7 @@ package maroo.net.irc
 		public var options:Dictionary;
 		public var channels:Vector.<IRCChannel>;
 		public var users:Vector.<IRCUser>;
+		public var me:IRCUser;
 		private var buffer:String;
 
 		public function IRCConnection(host:String=null, port:int=6667)
@@ -51,7 +52,9 @@ package maroo.net.irc
 				if (chan.name == name)
 					return chan;
 			}
-			return new IRCChannel(name);
+			chan = new IRCChannel(name);
+			chan.connection = this;
+			return chan;
 		}
 		
 		/**
@@ -69,28 +72,32 @@ package maroo.net.irc
 			// nick!user
 			// nick!user@host
 			// nick@host
-			var match:Array = mask.match(/^(?P<nick>[@\+]*[^!@]+)(?:(?:\!(?P<user>[^@]+))?(?:\@(?P<host>\S+)))?$/);
-			var nick:String = match['nick'];
-			var user:String = match['user'] || '*';
-			var host:String = match['host'] || '*';
-			if (mask.match(/^[@\+]+[^!@]+$/)) {
-				nick = nick.substr(1);
-			}
-			mask = nick + '!' + user + '@' + host; 
 			for each (var _user:IRCUser in users) {
-				Alert.show('findUser: ' + mask + ', ' + (IRCUtil.matchMask(_user.mask, mask) ? '1' : '0'));
 				if (IRCUtil.matchMask(_user.mask, mask))
 					return _user;
 			}
-			//return new IRCUser('not found');
-			_user = new IRCUser(nick, user, host, server);
+			var match:Array = mask.match(IRCUtil.RE_MASK);
+			_user = new IRCUser(match['nick'], match['user'], match['host'], server);
+			users.push(_user);
 			return _user;
+		}
+		
+		public function findNick(nick:String):IRCUser
+		{
+			for each (var _user:IRCUser in users) {
+				if (_user.nick == nick)
+					return _user;
+			}
+			return findUser(nick);
 		}
 		
 		public function findUsers(mask:String):Vector.<IRCUser>
 		{
-			// TODO: implement this
-			return new Vector.<IRCUser>();
+			var found:Vector.<IRCUser> = users.filter(function(item:*, index:int, arr:Vector.<IRCUser>):Boolean {
+				var user:IRCUser = item as IRCUser;
+				return IRCUtil.matchMask(item.mask, mask);
+			});
+			return found;
 		}
 
 		private function addUser(user:IRCUser):void
@@ -101,9 +108,6 @@ package maroo.net.irc
 		
 		private function removeUser(user:IRCUser):void
 		{
-			for each (var chan:IRCChannel in user.channels) {
-				chan.removeUser(user);
-			}
 			var pos:int = users.indexOf(user);
 			if (pos > -1)
 				users.splice(pos, 1);
@@ -148,7 +152,11 @@ package maroo.net.irc
 			var chan:IRCChannel;
 			var user:IRCUser;
 			var chanEvent:IRCChannelEvent;
+			var userEvent:IRCUserEvent;
 			switch (message.command) {
+				case '001':	// RPL_WELCOME
+					me = findUser(message.text.split(/\s+/).pop());
+					break;
 				case '005':	// RPL_BOUNCE
 					message.params.pop();	// :are supported by this server
 					message.params.shift();	// target nick
@@ -165,53 +173,54 @@ package maroo.net.irc
 					chan = findChannel(message.params[1]);
 					if (channels.indexOf(chan) < 0)
 						channels.push(chan);
-					//MonsterDebugger.trace(this, message);
-					chanEvent = new IRCChannelEvent(IRCChannelEvent.JOIN, chan, message);
+					chanEvent = new IRCChannelEvent(IRCChannelEvent.JOIN, message);
+					dispatchEvent(chanEvent);
+					break;
+				case 'PART':
+					chan = findChannel(message.params[1]);
+					if (channels.indexOf(chan) > -1)
+						channels.splice(channels.indexOf(chan), 1);
+					chanEvent = new IRCChannelEvent(IRCChannelEvent.PART, message);
 					dispatchEvent(chanEvent);
 					break;
 				case '353':	// users
 					chan = findChannel(message.params[2]);
 					if (chan) {
-						/*
 						if (message.params[1] == '@')
 							chan.setMode('+s');
 						if (message.params[1] == '*')
 							chan.setMode('+p');
-						*/
 						
 						var nicks:Array = message.text.split(/\s+/);
 						for each (var nick:String in nicks) {
-							if (nick.match(/^[@\+]/)) {
-								nick = nick.substr(1);
-								chan.setMode('+o ' + nick);
-							}
-							user = findUser(nick);
-							if (user.channels.indexOf(chan) < 0)
-								user.channels.push(chan);
-							if (users.indexOf(user) < 0)
-								users.push(user);
-							if (chan.users.indexOf(user) < 0)
-								chan.users.push(user);
+							user = new IRCUser(nick); //findNick(nick);
+							chan.addUser(user);
 						}
 					}
 					break;
 				case '366':	// end of channel info
 					break;
+				case 'PRIVMSG':
+					userEvent = new IRCUserEvent(IRCUserEvent.PRIVMSG, message);
+					dispatchEvent(userEvent);
+					break;
 				case 'MODE':
-					if (/^[&#+!][^\s\,]+&/.test(message.params[0])) { // channel modes
-						chan = findChannel(message.params.pop());
+					if (/^[&#+!]\S+/.test(message.params[0])) { // channel modes
+						chan = new IRCChannel(message.params[0]);
 						chan.setMode(message.params.join(' '));
-						chanEvent = new IRCChannelEvent(IRCChannelEvent.MODE,
-							chan, message);
+						chanEvent = new IRCChannelEvent(IRCChannelEvent.MODE, message);
 						dispatchEvent(chanEvent);
 					} else {	// user mode
-						user = findUser(message.params.pop());
+						user = new IRCUser(message.params[0]);
 						user.setMode(message.params.join(' '));
+						userEvent = new IRCUserEvent(IRCUserEvent.MODE, message);
+						dispatchEvent(userEvent);
 					}
 					break;
 				case 'QUIT':
 					user = message.prefix as IRCUser;
-					removeUser(user);
+					userEvent = new IRCUserEvent(IRCUserEvent.QUIT, message);
+					dispatchEvent(userEvent);
 					break;
 			}
 		}

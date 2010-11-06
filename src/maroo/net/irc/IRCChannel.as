@@ -8,9 +8,7 @@ package maroo.net.irc
 		public var key:String;
 		public var limit:int = -1;
 		public var users:Vector.<IRCUser>;
-		public var opers:Vector.<IRCUser>;
-		public var voices:Vector.<IRCUser>;
-		public var bans:Vector.<IRCUser>;
+		public var bans:Vector.<String>;
 
 		public function IRCChannel(name:String, mode:String=null)
 		{
@@ -18,52 +16,71 @@ package maroo.net.irc
 			this.name = name;
 			modes = [];
 			users = new Vector.<IRCUser>();
-			opers = new Vector.<IRCUser>();
-			voices = new Vector.<IRCUser>();
-			bans = new Vector.<IRCUser>();
+			bans = new Vector.<String>();
 			if (mode)
 				setMode(mode);
 		}
 		
 		public function addUser(user:IRCUser):void
 		{
-			if (users.indexOf(user) < 0)
+			var exists:Boolean = false;
+			for (var i:int = 0, cnt:int = users.length; i < cnt; i++) {
+				if (users[i].nick == user.nick) {
+					// merge properties
+					users[i].host = user.host || users[i].host;
+					users[i].user = user.user || users[i].user;
+					users[i].isOper = user.isOper || users[i].isOper;
+					users[i].isVoice = user.isVoice || users[i].isVoice;
+					exists = true;
+					return;
+				}
+			}
+			if (!exists)
 				users.push(user);
 		}
 		
 		public function removeUser(user:IRCUser):void
 		{
-			for each (var container:Vector.<IRCUser> in [users, opers, voices]) {
-				var pos:int = container.indexOf(user);
-				if (pos > -1)
-					container.splice(pos, 1);
+			for (var i:int = 0, cnt:int = users.length; i < cnt; i++) {
+				if (users[i].nick == user.nick) {
+					users.splice(i, 1);
+					return;
+				}
+			}
+		}
+
+		public function op(mask:String, effect:String='+'):void
+		{
+			for each (var user:IRCUser in findUsers(mask)) {
+				user.isOper = (effect == '+');
+				var type:String = effect == '+' ? IRCChannelEvent.OP : IRCChannelEvent.DEOP;
+				var message:IRCMessage = new IRCMessage(type, this, [user.nick]);
+				var event:IRCChannelEvent = new IRCChannelEvent(type, message);
+				connection.dispatchEvent(event);
 			}
 		}
 		
-		private function manageList(jar:Vector.<IRCUser>, snake:IRCUser, effect:String):void
+		public function voice(mask:String, effect:String='+'):void
 		{
+			for each (var user:IRCUser in findUsers(mask)) {
+				user.isVoice = (effect == '+');
+				var type:String = effect == '+' ? IRCChannelEvent.VOICE : IRCChannelEvent.DEVOICE;
+				var message:IRCMessage = new IRCMessage(type, this, [user.nick]);
+				var event:IRCChannelEvent = new IRCChannelEvent(type, message);
+				connection.dispatchEvent(event);
+			}
+		}
+		
+		public function ban(mask:String, effect:String='+'):void
+		{
+			for (var i:int = bans.length; i >= 0; i--) {				
+				if (IRCUtil.matchMask(bans[i], mask)) {
+					bans.splice(i, 1);
+				}
+			}
 			if (effect == '+') {
-				if (jar.indexOf(snake) < 0)
-					jar.push(snake);
-			} else if (effect == '-') {
-				if (jar.indexOf(snake) > -1)
-					jar.splice(jar.indexOf(snake), 1);
+				bans.push(mask);
 			}
-		}
-		
-		public function op(user:IRCUser, effect:String='+'):void
-		{
-			manageList(opers, user, effect);
-		}
-		
-		public function voice(user:IRCUser, effect:String='+'):void
-		{
-			manageList(voices, user, effect);
-		}
-		
-		public function ban(user:IRCUser, effect:String='+'):void
-		{
-			manageList(bans, user, effect);
 		}
 		
 		public function setKey(key:String, effect:String='+'):void
@@ -74,19 +91,22 @@ package maroo.net.irc
 				this.key = key;
 		}
 
-		public function findUser(mask:String):IRCUser
+		public function findUser(nick:String):IRCUser
 		{
-			if (server && server.connection && server.connection.connected)
-				return server.connection.findUser(mask);
-			var match:Array = mask.match(/^([^!@]+)(?:(?:\!([^@]+))?(?:\@(\S+)))?$/);
-			var nick:String = match[1];
 			for each (var user:IRCUser in users) {
 				if (user.nick == nick)
 					return user;
 			}
-			// XXX: IRCUser.fromString not works
-			//return IRCUser.fromString(mask) as IRCUser;
-			return new IRCUser(nick);
+			return null;
+		}
+		
+		public function findUsers(mask:String):Vector.<IRCUser>
+		{
+			var found:Vector.<IRCUser> = users.filter(function(item:*, index:int, arr:Vector.<IRCUser>):Boolean {
+				var user:IRCUser = item as IRCUser;
+				return IRCUtil.matchMask(item.mask, mask);
+			});
+			return found;
 		}
 		
 		public function getMode():String
@@ -110,8 +130,7 @@ package maroo.net.irc
 					effect = char;
 					continue;
 				}
-				if (['o','v','b','k'].indexOf(char)) { // op voice ban key
-					targets.shift()
+				if (['o','v','b','k'].indexOf(char) > -1) { // op voice ban key
 					methodMap[char](targets.shift(), effect);
 				} else if (char == 'l') {	// limit
 					if (effect == '+')

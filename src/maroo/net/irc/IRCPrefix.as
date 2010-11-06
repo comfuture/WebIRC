@@ -1,17 +1,20 @@
 package maroo.net.irc
 {
-	public class IRCPrefix
+	import flash.events.EventDispatcher;
+
+	public class IRCPrefix extends EventDispatcher
 	{
 		public static const SERVER:String = 'server';
 		public static const CHANNEL:String = 'channel';
 		public static const USER:String = 'user';
 
-		public var server:IRCServer;
+		public var connection:IRCConnection;
 		public var type:String;
 		public var name:String;
 		
 		public function IRCPrefix(type:String)
 		{
+			super(this);
 			this.name = '-';
 			this.type = type;
 		}
@@ -32,7 +35,7 @@ package maroo.net.irc
 			return new IRCServer(str); // XXX
 		}
 		
-		public function toString():String
+		override public function toString():String
 		{
 			return name;
 		}

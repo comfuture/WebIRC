@@ -2,6 +2,7 @@ package maroo.net.irc
 {
 	public class IRCUtil
 	{
+		public static const RE_MASK:RegExp = /^[@\+]*(?P<nick>[^!@]+)(?:(?:\!(?P<user>[^@]+))?(?:\@(?P<host>\S+)))?$/;
 		public static function escapeRegExp(pattern:String):String
 		{
 			return pattern.replace(
@@ -26,6 +27,14 @@ package maroo.net.irc
 		
 		public static function matchMask(target:String, mask:String):Boolean
 		{
+			var match:Array = mask.match(RE_MASK);
+			var nick:String = match['nick'];
+			var user:String = match['user'] || '*';
+			var host:String = match['host'] || '*';
+			if (mask.match(/^[@\+]+[^!@]+$/)) {
+				nick = nick.substr(1);
+			}
+			mask = nick + '!' + user + '@' + host; 
 			var re:RegExp = easyRegExp(mask, 'i');
 			return re.test(target);
 		}
