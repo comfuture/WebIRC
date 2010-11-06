@@ -2,13 +2,76 @@
 <s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
 				xmlns:s="library://ns.adobe.com/flex/spark" 
 				xmlns:mx="library://ns.adobe.com/flex/mx" 
-				autoDrawBackground="true" xmlns:widget="ui.widget.*" height="20" verticalCenter="0">
+				autoDrawBackground="true" xmlns:widget="ui.widget.*" height="20" verticalCenter="0"
+				dataChange="onDataChange(event)" creationComplete="init()">
 	<fx:Script>
 		<![CDATA[
 			import maroo.net.irc.IRCUser;
+			
+			import mx.core.UIComponent;
+			import mx.events.FlexEvent;
+			
+			import ui.Window;
+			
+			public static const COLOR_OPER:uint = 0xFFFF00;
+			public static const COLOR_VOICE:uint = 0x00FF00;
+			public static const COLOR_NORMAL:uint = 0xAAAAAA;
+			
+			private var user:IRCUser;
+			
+			private var opMenuItem:ContextMenuItem = new ContextMenuItem('+OP');
+			private var voiceMenuItem:ContextMenuItem = new ContextMenuItem('+Voice');
+			
+			private function init():void
+			{
+				contextMenu = new ContextMenu();
+				contextMenu.builtInItems.forwardAndBack = false;
+				contextMenu.builtInItems.loop = false;
+				contextMenu.builtInItems.play = false;
+				contextMenu.builtInItems.print = false;
+				contextMenu.builtInItems.quality = false;
+				contextMenu.builtInItems.rewind = false;
+				contextMenu.builtInItems.save = false;
+				contextMenu.builtInItems.zoom = false;
+
+				contextMenu.customItems.push(opMenuItem);
+				contextMenu.customItems.push(voiceMenuItem);
+			}
+			
+			private function onDataChange(event:FlexEvent):void
+			{
+				user = data as IRCUser;
+				var me:IRCUser = Window(UIComponent(parentDocument).parentDocument).prefix.connection.me;
+				opMenuItem.enabled = voiceMenuItem.enabled = me.isOper;
+				//user.isMe = me.nick == user.nick;
+				opMenuItem.caption = '+OP';
+				lblNick.text = user.nick;
+				if (user.isOper) {
+					iconColor.color = COLOR_OPER;
+					opMenuItem.caption = '-OP';
+				} else if (user.isVoice)
+					iconColor.color = COLOR_VOICE;
+				else
+					iconColor.color = COLOR_NORMAL;
+			}
 		]]>
 	</fx:Script>
-	
-	<widget:UserWidget data="{data as IRCUser}" verticalCenter="0" left="10"/>
-	
+	<s:layout>
+		<s:HorizontalLayout/>
+	</s:layout>
+	<s:Graphic viewWidth="20" viewHeight="20">
+		<s:filters>
+			<s:DropShadowFilter alpha="0.2" strength="1" />
+		</s:filters>
+		<s:Ellipse width="10" height="10" horizontalCenter="0" verticalCenter="0">
+			<s:fill>
+				<s:SolidColor id="iconColor" color="{COLOR_NORMAL}"/>
+			</s:fill>
+			<s:filters>
+				<s:GradientBevelFilter/>
+			</s:filters>
+		</s:Ellipse>
+	</s:Graphic>
+	<s:Label height="100%" minHeight="10" minWidth="50" id="lblNick" text="IRCUser" verticalAlign="middle"
+		verticalCenter="0"/>
 </s:ItemRenderer>
