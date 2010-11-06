@@ -11,6 +11,8 @@
 	</fx:Declarations>
 	<fx:Script source="WebIRC.mxml.as" />
 	<mx:TabNavigator id="tabs" width="100%" height="100%">
+		<s:NavigatorContent label="+">
+		</s:NavigatorContent>
 	</mx:TabNavigator>
 	<s:Group width="100%" visible="false">
 		<s:layout>

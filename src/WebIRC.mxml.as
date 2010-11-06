@@ -1,6 +1,9 @@
+import flash.events.Event;
+import flash.events.MouseEvent;
 import flash.external.ExternalInterface;
 
 import maroo.net.irc.IRCChannel;
+import maroo.net.irc.IRCChannelEvent;
 import maroo.net.irc.IRCConnection;
 import maroo.net.irc.IRCConstant;
 import maroo.net.irc.IRCEvent;
@@ -8,6 +11,7 @@ import maroo.net.irc.IRCMessage;
 import maroo.net.irc.IRCPrefix;
 import maroo.net.irc.IRCServer;
 import maroo.net.irc.IRCUser;
+import maroo.net.irc.IRCUserEvent;
 import maroo.net.irc.scripting.Environment;
 
 import mx.collections.ArrayCollection;
@@ -24,6 +28,7 @@ import nl.demonsters.debugger.MonsterDebugger;
 
 import ui.ConnectionDialog;
 import ui.NicknameDialog;
+import ui.ScriptEditor;
 import ui.Window;
 
 [Bindable]
@@ -44,8 +49,6 @@ private function init():void
 	
 	ExternalInterface.addCallback('processInput', processInput);
 	ExternalInterface.addCallback('showNicknameDialog', showNicknameDialog);
-	//var debugger:MonsterDebugger = MonsterDebugger(this);
-	//MonsterDebugger.trace(this, 'init');
 	var connectionDialog:IFlexDisplayObject = PopUpManager.createPopUp(this, ConnectionDialog, true);
 	PopUpManager.centerPopUp(connectionDialog);
 	connect();
@@ -57,6 +60,17 @@ private function connect():void
 	conn = new IRCConnection('webirc.ozinger.org');
 	conn.addEventListener(Event.CONNECT, onConnect);
 	conn.addEventListener(IRCEvent.MESSAGE, onMessage);
+	conn.addEventListener(IRCChannelEvent.JOIN, onJoinChannel);
+	conn.addEventListener(IRCChannelEvent.PART, onPartChannel);
+	//conn.addEventListener(IRCChannelEvent.INVITE, onChannelEvent);
+	//conn.addEventListener(IRCChannelEvent.KICK, onChannelEvent);
+	conn.addEventListener(IRCChannelEvent.MODE, onChannelMode);
+	conn.addEventListener(IRCChannelEvent.OP, onChannelPermission);
+	conn.addEventListener(IRCChannelEvent.DEOP, onChannelPermission);
+	conn.addEventListener(IRCChannelEvent.VOICE, onChannelPermission);
+	conn.addEventListener(IRCChannelEvent.DEVOICE, onChannelPermission);
+	conn.addEventListener(IRCUserEvent.PRIVMSG, onUserEvent);
+	//conn.addEventListener(IRCUserEvent.MODE, onUserEvent);
 }
 
 private function onConnect(event:Event):void
@@ -69,18 +83,17 @@ private function onConnect(event:Event):void
 private function getTargetWindow(prefix:IRCPrefix):Window
 {
 	var win:Window;
-	for (var i:int = 0, cnt:int = tabs.numElements; i < cnt; i++) {
+	for (var i:int = 0, cnt:int = tabs.numElements - 1; i < cnt; i++) {
 		win = tabs.getItemAt(i) as Window;
-		//Alert.show(win.label);
-		if (win.prefix == prefix)
+		if (win.prefix.name == prefix.name)
 			return win;
 	}
 
 	win = new Window();
 	win.prefix = prefix;
-	tabs.addElement(win);
+	//tabs.addElement(win);
+	tabs.addElementAt(win, cnt);
 	return win;
-	return tabs.selectedChild as Window;
 }
 
 public function get currentWindow():Window
@@ -99,40 +112,18 @@ private function onMessage(event:IRCEvent):void
 			_me = conn.findUser(message.text.split(/\s+/).pop());
 			ExternalInterface.call('webIRC.onNick', _me.nick);
 			break;
-		case 'JOIN':
-			chan = conn.findChannel(message.params[1]);
-			user = message.prefix as IRCUser;
-			//Alert.show('JOIN: ' + user.toString()); 
-			win = getTargetWindow(chan);
-			win.addUser(user);
-			tabs.selectedChild = win;
-			win.appendText('join ' + message.prefix.toString());
-			break;
-		/*
-		case '353':
+		case IRCConstant.RPL_ENDOFNAMES: // '366'
 			chan = conn.findChannel(message.params[1]);
 			win = getTargetWindow(chan);
-			break;
-		*/
-		case '366':
-			chan = conn.findChannel(message.params[1]);
-			win = getTargetWindow(chan);
-			//Alert.show('users:' + win.users.toString());
 			for each (user in chan.users) {
 				win.addUser(user);
-				//Alert.show(user.toString());
 			}
 			break;
-		case '332': // TOPIC_REPL
+		case IRCConstant.RPL_TOPIC: // '332'
 		case 'TOPIC':
 			chan = conn.findChannel(message.params[message.params.length - 2]);
 			win = getTargetWindow(chan);
 			win.topic = message.text;
-			break;
-		case 'PRIVMSG':
-			chan = conn.findChannel(message.params[0]);
-			win = getTargetWindow(chan);
-			win.appendMessage(message);
 			break;
 		case 'PART':
 			break;
@@ -145,8 +136,53 @@ private function onMessage(event:IRCEvent):void
 		case 'NOTICE': case '372':
 		default:
 			win = getTargetWindow(conn.server);
-			win.appendMessage(message);
+			win.appendText(message.raw);
+			//win.appendMessage(message);
 	}
+}
+
+private function onJoinChannel(event:IRCChannelEvent):void
+{
+	var win:Window = getTargetWindow(event.channel);
+	win.addUser(event.toUser);
+	tabs.selectedChild = win;
+	if (event.toUser == me) {
+		win.appendMessage(event.message);
+	}
+}
+
+private function onPartChannel(event:IRCChannelEvent):void
+{
+	var win:Window = getTargetWindow(event.channel);
+	if (event.toUser == me) {
+		tabs.removeChild(win);
+	} else {
+		win.removeUser(event.toUser);
+	}
+}
+
+private function onChannelMode(event:IRCChannelEvent):void
+{
+	var channel:IRCChannel = event.channel;
+	channel.setMode(event.mode);
+	var win:Window = getTargetWindow(channel);
+	//win.refreshUsers();
+	win.appendMessage(event.message);
+}
+
+private function onChannelPermission(event:IRCChannelEvent):void
+{
+	if (event.type == IRCChannelEvent.OP)
+		event.toUser.isOper = true;
+	if (event.type == IRCChannelEvent.DEOP)
+		event.toUser.isOper = false;
+	if (event.type == IRCChannelEvent.VOICE)
+		event.toUser.isVoice = true;
+	if (event.type == IRCChannelEvent.DEVOICE)
+		event.toUser.isVoice = false;
+	var channel:IRCChannel = event.channel;
+	var win:Window = getTargetWindow(channel);
+	win.refreshUsers();
 }
 
 public function processInput(str:String):void
@@ -166,9 +202,20 @@ public function processInput(str:String):void
 	currentWindow.appendMessage(msg);
 }
 
+private function onUserEvent(event:IRCUserEvent):void
+{
+	var win:Window;
+	if (event.channel)
+		win = getTargetWindow(event.channel);
+	else
+		win = getTargetWindow(event.message.prefix);
+	win.appendMessage(event.message);
+}
+
 public function showNicknameDialog():void
 {
-	var nicknameDialog:IFlexDisplayObject = PopUpManager.createPopUp(this, NicknameDialog);
+	//var nicknameDialog:IFlexDisplayObject = PopUpManager.createPopUp(this, NicknameDialog);
+	var nicknameDialog:IFlexDisplayObject = PopUpManager.createPopUp(this, ScriptEditor);
 	PopUpManager.centerPopUp(nicknameDialog);
 }
 
@@ -183,4 +230,9 @@ private function onInput(event:KeyboardEvent):void
 		processInput(event.target.text);
 		event.target.text = '';
 	}
+}
+
+private function onNewTabClick(event:Event):void
+{
+	Alert.show('new tab button clicked');
 }
