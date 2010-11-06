@@ -2,16 +2,19 @@
 <s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
 		 xmlns:s="library://ns.adobe.com/flex/spark" 
 		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" currentState="server"
-		 creationComplete="init()">
+		 creationPolicy="all" creationComplete="init()">
 	<fx:Script>
 		<![CDATA[
+			import flashx.textLayout.edit.SelectionFormat;
 			import flashx.textLayout.elements.FlowElement;
 			import flashx.textLayout.elements.TextFlow;
+			import flashx.textLayout.formats.Direction;
 			
 			import maroo.net.irc.IRCChannel;
 			import maroo.net.irc.IRCMessage;
 			import maroo.net.irc.IRCPrefix;
 			import maroo.net.irc.IRCUser;
+			import maroo.net.irc.IRCUserCollection;
 			
 			import mx.collections.ArrayCollection;
 			import mx.utils.ArrayUtil;
@@ -20,10 +23,9 @@
 			import ui.util.MessageFormatter;
 			
 			private var _prefix:IRCPrefix;
-			private var queue:Vector.<IRCMessage> = new Vector.<IRCMessage>();
 
 			[Bindable]
-			public var users:ArrayCollection = new ArrayCollection();
+			public var users:IRCUserCollection;
 
 			[Bindable]
 			public function get prefix():IRCPrefix
@@ -34,8 +36,11 @@
 			{
 				_prefix = value;
 				currentState = value.type;
+				if (value is IRCUser) {
+					topic = 'Private chat with ' + value.name;
+				}
 				if (value is IRCChannel) {
-					//users.source = ArrayUtil.toArray(IRCChannel(value).users);
+					users = new IRCUserCollection((value as IRCChannel).users);
 					//lstUsers.dataProvider = users;
 				}
 			}
@@ -45,45 +50,45 @@
 				return prefix.name;
 			}
 			
-			public function init():void
+			private function init():void
 			{
-				if (queue.length > 0) {
-					for (var i:int = queue.length - 1; i >= 0; i--) {
-						appendMessage(queue.shift() as IRCMessage);
-					}
-				}
+				history.addEventListener(Event.ADDED, function(event:Event):void {
+					scroller.verticalScrollBar.value = scroller.verticalScrollBar.maximum;
+				});
 			}
-			
+
 			public function appendMessage(message:IRCMessage):void
 			{
-				var el:FlowElement = MessageFormatter.formatMessage(message);
-				try {
+				callLater(function():void {
+					var el:FlowElement = MessageFormatter.formatMessage(message);
 					history.textFlow.addChild(el);
-				} catch (e:Error) {
-					queue.push(message);
-				}
+				});
 			}
 			
 			public function appendText(text:String):void
 			{
-				var el:FlowElement = MessageFormatter.formatString(text);
-				try {
+				callLater(function():void {
+					var el:FlowElement = MessageFormatter.formatString(text);
 					history.textFlow.addChild(el);
-				} catch (e:Error) {
-					//
-				}
+					//scroller.verticalScrollBar.value = scroller.verticalScrollBar.maximum;
+				});
 			}
 			
 			public function addUser(user:IRCUser):void
 			{
-				if (!users.contains(user))
-					users.addItem(user);
+				users.addUser(user);
 			}
 			
 			public function removeUser(user:IRCUser):void
 			{
-				if (users.contains(user))
-					users.removeItemAt(users.getItemIndex(user));
+				users.removeUser(user);
+			}
+			
+			public function refreshUsers():void
+			{
+				users.source = (prefix as IRCChannel).users;
+				lstUsers.dataProvider = users;
+				users.refresh();
 			}
 			
 			public function get topic():String
@@ -93,7 +98,9 @@
 			
 			public function set topic(value:String):void
 			{
-				txtTopic.text = value;
+				callLater(function():void {
+					txtTopic.text = value;
+				});
 			}
 		]]>
 	</fx:Script>
@@ -117,10 +124,12 @@
 				 backgroundColor="0xEEEEEE" includeIn="channel,user"/>
 		<s:Scroller width="100%" height="100%" id="scroller" minViewportInset="1" focusEnabled="false">
 			<s:Group width="100%" height="100%" clipAndEnableScrolling="true" id="chatView">
-				<s:RichText id="history" width="100%" paddingLeft="10" paddingTop="5">
-				</s:RichText>
+				<s:RichEditableText id="history" width="100%" paddingLeft="10" paddingTop="5" editable="false"
+									focusEnabled="false">
+				</s:RichEditableText>
 			</s:Group>
 		</s:Scroller>
 	</s:Group>
-	<s:List width="200" height="100%" id="lstUsers" dataProvider="{users}" itemRenderer="ui.renderer.UserRenderer" includeIn="channel"></s:List>
+	<s:List width="200" height="100%" id="lstUsers" dataProvider="{users}"
+			itemRenderer="ui.renderer.UserRenderer" includeIn="channel"></s:List>
 </s:NavigatorContent>
